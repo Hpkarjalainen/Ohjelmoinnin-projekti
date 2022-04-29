@@ -1,0 +1,77 @@
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27,16,2);
+
+const byte sensor1 = 2;
+const byte sensor2 = 3;
+const byte buzzer = 8;
+
+unsigned long Time1;
+unsigned long Time2;
+unsigned long Time;
+volatile int flag = 0;
+
+volatile byte distance = 10;                    //sensoreiden väli 10cm
+
+float Speed;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(buzzer, OUTPUT);
+  lcd.init();                      
+  lcd.backlight();
+  
+  attachInterrupt(0,fun1,FALLING);    //keskeytys 1. IR-sensori antaa 0 kun liikettä havaitaan
+  attachInterrupt(1,fun2,FALLING);    //keskeytys 2.
+
+  lcd.begin(16,2);                    //introteksti
+  lcd.clear();
+  lcd.print("Hei, olen Noppe");
+  lcd.setCursor(0, 1);
+  lcd.print("Aloitetaan ajot!");
+  delay(1500);
+  lcd.clear();
+}
+
+void fun1(){              
+  Time1 = millis();   
+  if (flag == 0) {flag = 1;}
+  else {flag = 0;}
+} 
+
+void fun2(){
+  Time2 = millis();
+  if (flag == 0) {flag = 1;}
+  else {flag = 0;}
+}
+
+
+void loop() {
+  
+    if (flag == 0){                                            //jos molemmista sensoreista liike, lippu on nolla
+    if      (Time1 > Time2)                                    //kun sensori 2 havaitsee ensin liikettä, niin Time1 on suurempi  
+     {Time = Time1 - Time2;  Speed = (distance*1000)/Time; ;}
+     
+    else if (Time2 > Time1)                                    //kun sensori 1 havaitsee ensin liikkeen, on Time2 suurempi
+     {Time = Time2 - Time1;  Speed = (distance*1000)/Time;}
+    else    {Speed = 0;}                                       //jos lippu on 1, speed-muuttuja nolla
+  }
+  if (Speed == 0) {         //valmiustila
+    lcd.setCursor(2, 0); 
+    lcd.print("Valmiudessa."); 
+    lcd.setCursor(6, 1); 
+    lcd.print("Aja!"); 
+    }
+  else {                    //mikäli speed sisältää lukeman, tämä
+    if(Speed > 50) {digitalWrite(buzzer, HIGH);}     
+    lcd.clear();
+    lcd.setCursor(2, 1);  
+    lcd.print(Speed);
+    lcd.print(" cm/sec");
+    delay(2000);
+    digitalWrite(buzzer, LOW);
+    lcd.clear();
+    Time1 = 0;
+    Time2 = 0;
+    }
+}
